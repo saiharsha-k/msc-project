@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LinkedIn Content Schedule</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        h1 { text-align: center; color: #333; }
+        table { width: 90%; margin: 20px auto; border-collapse: collapse; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #0073b1; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        a { color: #0073b1; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        form { width: 90%; margin: 20px auto; padding: 10px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        label, input, select { margin: 5px 0; display: block; width: 100%; }
+        button { background-color: #0073b1; color: white; padding: 10px; border: none; cursor: pointer; }
+        button:hover { background-color: #005582; }
+        .delete-btn { background-color: #d9534f; }
+        .delete-btn:hover { background-color: #c9302c; }
+        td { cursor: pointer; }
+        input, select { width: 100%; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <h1>LinkedIn Content Schedule</h1>
+    <table id="schedule-table">
+        <thead>
+            <tr>
+                <th>Post Title</th>
+                <th>Content Type</th>
+                <th>Scheduled Date</th>
+                <th>Status</th>
+                <th>Draft Link</th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in schedule %}
+            <tr data-record-id="{{ item.id }}">
+                <td class="editable" data-field="Post title">{{ item.fields.get('Post title', 'N/A') }}</td>
+                <td class="editable" data-field="Content type">
+                    <span class="display">{{ item.fields.get('Content type', 'N/A') }}</span>
+                    <select class="edit" style="display: none;">
+                        <option value="Post" {% if item.fields.get('Content type') == 'Post' %}selected{% endif %}>Post</option>
+                        <option value="Article" {% if item.fields.get('Content type') == 'Article' %}selected{% endif %}>Article</option>
+                        <option value="Poll" {% if item.fields.get('Content type') == 'Poll' %}selected{% endif %}>Poll</option>
+                    </select>
+                </td>
+                <td class="editable" data-field="Scheduled date">
+                    <span class="display">{{ item.fields.get('Scheduled date', 'N/A') }}</span>
+                    <input type="datetime-local" class="edit" style="display: none;" value="{{ item.fields.get('Scheduled date', '')|datetime_local }}">
+                </td>
+                <td class="editable" data-field="Status">
+                    <span class="display">{{ item.fields.get('Status', 'N/A') }}</span>
+                    <select class="edit" style="display: none;">
+                        <option value="Draft" {% if item.fields.get('Status') == 'Draft' %}selected{% endif %}>Draft</option>
+                        <option value="Scheduled" {% if item.fields.get('Status') == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                        <option value="Posted" {% if item.fields.get('Status') == 'Posted' %}selected{% endif %}>Posted</option>
+                    </select>
+                </td>
+                <td class="editable" data-field="Draft link">
+                    {% if item.fields.get('Draft link') %}
+                        <a href="{{ item.fields['Draft link'] }}" target="_blank">{{ item.fields['Draft link'] }}</a>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                    <input type="url" class="edit" style="display: none;" value="{{ item.fields.get('Draft link', '') }}">
+                </td>
+                <td class="editable" data-field="Notes">{{ item.fields.get('Notes', 'N/A') }}</td>
+                <td>
+                    <button class="delete-btn" onclick="deleteRecord('{{ item.id }}')">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <form method="POST" action="/add">
+        <label for="post_title">Post Title:</label>
+        <input type="text" id="post_title" name="post_title" required>
+        
+        <label for="content_type">Content Type:</label>
+        <select id="content_type" name="content_type" required>
+            <option value="Post">Post</option>
+            <option value="Article">Article</option>
+            <option value="Poll">Poll</option>
+        </select>
+        
+        <label for="scheduled_date">Scheduled Date:</label>
+        <input type="datetime-local" id="scheduled_date" name="scheduled_date" required>
+        
+        <label for="draft_link">Draft Link (optional):</label>
+        <input type="url" id="draft_link" name="draft_link">
+        
+        <button type="submit">Add Content</button>
+    </form>
+
+    <script>
+        // In-line editing functionality
+        document.querySelectorAll('.editable').forEach(cell => {
+            cell.addEventListener('click', function() {
+                const display = this.querySelector('.display');
+                const edit = this.querySelector('.edit');
+                if (display && edit) {
+                    display.style.display = 'none';
+                    edit.style.display = 'block';
+                    edit.focus();
+                } else {
+                    const value = this.innerText;
+                    this.innerHTML = `<input type="text" class="edit" value="${value}">`;
+                    this.querySelector('.edit').focus();
+                }
+            });
+        });
+
+        // Save changes on blur
+        document.querySelectorAll('td').forEach(cell => {
+            cell.addEventListener('focusout', function(e) {
+                if (e.target.classList.contains('edit')) {
+                    const recordId = this.parentElement.dataset.recordId;
+                    const field = this.dataset.field;
+                    const newValue = e.target.value;
+                    const display = this.querySelector('.display');
+
+                    // Update the display value
+                    if (display) {
+                        display.style.display = 'block';
+                        display.innerText = newValue;
+                        e.target.style.display = 'none';
+                    } else {
+                        this.innerText = newValue;
+                    }
+
+                    // Send update to server
+                    const updatedData = {};
+                    updatedData[field] = newValue;
+                    fetch(`/update/${recordId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(updatedData),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            alert('Error updating record: ' + data.error);
+                            // Revert on error
+                            if (display) {
+                                display.innerText = e.target.defaultValue;
+                            } else {
+                                this.innerText = e.target.defaultValue;
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error updating record');
+                    });
+                }
+            });
+        });
+
+        // Handle Enter key to save
+        document.querySelectorAll('td').forEach(cell => {
+            cell.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && e.target.classList.contains('edit')) {
+                    e.target.blur();
+                }
+            });
+        });
+
+        // Delete record
+        function deleteRecord(recordId) {
+            if (confirm('Are you sure you want to delete this record?')) {
+                fetch(`/delete/${recordId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.querySelector(`tr[data-record-id="${recordId}"]`).remove();
+                    } else {
+                        alert('Error deleting record: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting record');
+                });
+            }
+        }
+    </script>
+</body>
+</html>
