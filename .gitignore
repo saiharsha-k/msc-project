@@ -1,3 +1,8 @@
 myvenv
 MSc Project Workspace - VS Code.code-workspace
 env
+project-venv
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
