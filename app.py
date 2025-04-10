@@ -183,4 +183,5 @@ def lia():
     return jsonify({"response": response})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.getenv("PORT", 8080))  # Use PORT env var for Cloud Run, default to 8080
+    app.run(host="0.0.0.0", port=port, debug=False)  # Disable debug for production
