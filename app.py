@@ -9,13 +9,22 @@ from agents.lia_agent import get_lia_response  # Import the LIA agent
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # Replace with a secure key
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-here")  # Load from .env or use default
 
 # Airtable setup
 AIRTABLE_PAT = os.getenv("AIRTABLE_PAT")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 TABLE_NAME = "Content Schedule"
+
+if not AIRTABLE_PAT or not AIRTABLE_BASE_ID:
+    raise ValueError("AIRTABLE_PAT and AIRTABLE_BASE_ID must be set in the .env file")
+
 airtable = Api(AIRTABLE_PAT).table(AIRTABLE_BASE_ID, TABLE_NAME)
+
+# In-memory user storage (replace with a database in production)
+users = {
+    "admin": "password123"  # Default admin user
+}
 
 # Custom filter to convert ISO 8601 to datetime-local format
 @app.template_filter('datetime_local')
@@ -29,14 +38,42 @@ def datetime_local(value):
         print(f"Error parsing date: {str(e)}")
         return ''
 
+# Register route
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if session.get('logged_in'):
+        return redirect(url_for('home'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not username or not password:
+            return render_template('register.html', error="Username and password are required")
+        
+        if username in users:
+            return render_template('register.html', error="Username already exists")
+        
+        # Add the new user to the in-memory storage
+        users[username] = password
+        print(f"Registered new user: {username}")
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
 # Login route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if session.get('logged_in'):
+        return redirect(url_for('home'))
+    
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        if username == 'admin' and password == 'password123':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username in users and users[username] == password:
             session['logged_in'] = True
+            session['username'] = username  # Store username in session
             return redirect(url_for('home'))
         else:
             return render_template('login.html', error="Invalid username or password")
@@ -46,6 +83,7 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
+    session.pop('username', None)
     return redirect(url_for('login'))
 
 # Home route (protected)
@@ -57,7 +95,7 @@ def home():
         records = airtable.all()
         print("Raw Airtable Records:", records)
         schedule_data = [{'id': record['id'], 'fields': record['fields']} for record in records]
-        return render_template('home.html', schedule=schedule_data)
+        return render_template('home.html', schedule=schedule_data, username=session.get('username'))
     except Exception as e:
         print(f"Error fetching records: {str(e)}")
         return "Error fetching records", 500
@@ -66,10 +104,13 @@ def home():
 @app.route('/add', methods=['POST'])
 def add_new_content():
     try:
-        post_title = request.form['Post title']
-        content_type = request.form['Content type']
-        scheduled_date = request.form['Scheduled date']
+        post_title = request.form.get('Post title')
+        content_type = request.form.get('Content type')
+        scheduled_date = request.form.get('Scheduled date')
         draft_link = request.form.get('Draft link', None)
+        
+        if not post_title or not content_type or not scheduled_date:
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
         
         if 'T' in scheduled_date and scheduled_date.endswith('Z'):
             iso_date = scheduled_date
@@ -129,17 +170,15 @@ def delete_content(record_id):
         print(f"Error deleting record: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Chat route (placeholder for AI interaction)
-@app.route('/chat', methods=['POST'])
-def chat():
-    message = request.json['message']
-    response = f"I’m your LinkedIn AI Colleague! How can I help with: {message}"
-    return jsonify({"response": response})
-
 # LIA route for the new agent
 @app.route('/lia', methods=['POST'])
 def lia():
-    message = request.json['message']
+    data = request.get_json()
+    message = data.get('message', '')
+    if not message:
+        return jsonify({"response": "Error: No message provided."}), 400
+    
+    # Get response from the LIA agent
     response = get_lia_response(message)
     return jsonify({"response": response})
 
