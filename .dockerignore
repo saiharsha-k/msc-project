@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+project-venv/
+.env
+.git
+.gitignore
+MSc Project Workspace - VS Code.code-workspace
