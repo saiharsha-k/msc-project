@@ -36,6 +36,40 @@
             padding: 1rem;
             border-top: 1px solid #ddd;
         }
+        .chat-input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .chat-input-container input {
+            width: 100%;
+            padding: 0.75rem 3rem 0.75rem 1rem; /* Add padding on the right for the button */
+            border-radius: 1rem; /* Rounded input field */
+            border: 1px solid #ddd;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .chat-input-container input:focus {
+            border-color: #0073b1;
+            box-shadow: 0 0 0 2px rgba(0, 115, 177, 0.2);
+        }
+        .chat-input-container button {
+            position: absolute;
+            right: 0.5rem;
+            background-color: #0073b1;
+            border: none;
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .chat-input-container button:hover {
+            background-color: #005f8d;
+        }
         .message {
             margin-bottom: 1rem;
             padding: 0.5rem 1rem;
@@ -101,6 +135,63 @@
                 display: block;
             }
         }
+        /* Floating Chat Button and Window */
+        .floating-chat {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        .floating-chat-button {
+            background-color: #0073b1;
+            border-radius: 50%;
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s;
+        }
+        .floating-chat-button:hover {
+            background-color: #005f8d;
+        }
+        .floating-chat-window {
+            display: none;
+            position: absolute;
+            bottom: 4rem;
+            right: 0;
+            width: 20rem;
+            height: 24rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .floating-chat-window.open {
+            display: flex;
+        }
+        .floating-chat-header {
+            background-color: #0073b1;
+            color: white;
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .floating-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: #f9f9f9;
+        }
+        .floating-chat-input {
+            background-color: white;
+            padding: 0.5rem 1rem;
+            border-top: 1px solid #ddd;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -116,6 +207,7 @@
                 </svg>
             </button>
             <div class="profile-dropdown absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
+                <span class="block px-4 py-2 text-gray-700">{{ username }}</span>
                 <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">My Profile</a>
                 <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
                 <a href="/logout" class="block px-4 py-2 text-red-600 hover:bg-gray-100">Logout</a>
@@ -182,8 +274,14 @@
                     <div class="message ai">Hello! I'm LIA (LinkedIn Intelligence Agent). How can I assist you with LinkedIn today?</div>
                 </div>
                 <div class="chat-input">
-                    <input type="text" id="chat-input" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message...">
-                    <button onclick="sendMessage()" class="mt-2 w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition">Send</button>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" class="w-full" placeholder="Type your message...">
+                        <button onclick="sendMessage()">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -193,8 +291,14 @@
                     <div class="message ai">Hello! I'm LIA (LinkedIn Intelligence Agent). How can I assist you with LinkedIn today?</div>
                 </div>
                 <div class="chat-input">
-                    <input type="text" id="chat-full-input" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message...">
-                    <button onclick="sendFullMessage()" class="mt-2 w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition">Send</button>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-full-input" class="w-full" placeholder="Type your message...">
+                        <button onclick="sendFullMessage()">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -364,6 +468,38 @@
         </div>
     </div>
 
+    <!-- Floating Chat UI for LinkedIn Agent -->
+    <div class="floating-chat">
+        <div class="floating-chat-button" onclick="toggleFloatingChat()">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+            </svg>
+        </div>
+        <div class="floating-chat-window" id="floating-chat-window">
+            <div class="floating-chat-header">
+                <span>Chat with LIA</span>
+                <button onclick="toggleFloatingChat()" class="text-white hover:text-gray-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="floating-chat-messages" id="floating-chat-messages">
+                <div class="message ai">Hello! I'm LIA (LinkedIn Intelligence Agent). How can I assist you with LinkedIn today?</div>
+            </div>
+            <div class="floating-chat-input">
+                <div class="chat-input-container">
+                    <input type="text" id="floating-chat-input" class="w-full" placeholder="Type your message...">
+                    <button onclick="sendFloatingMessage()">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Function to show a section and hide others
         function showSection(section) {
@@ -459,6 +595,9 @@
                     body: JSON.stringify({ message }),
                 });
                 const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.response || 'Failed to get response from LIA');
+                }
                 const aiMessage = document.createElement('div');
                 aiMessage.className = 'message ai';
                 aiMessage.innerText = data.response;
@@ -501,6 +640,9 @@
                     body: JSON.stringify({ message }),
                 });
                 const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.response || 'Failed to get response from LIA');
+                }
                 const aiMessage = document.createElement('div');
                 aiMessage.className = 'message ai';
                 aiMessage.innerText = data.response;
@@ -518,6 +660,56 @@
         document.getElementById('chat-full-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 sendFullMessage();
+            }
+        });
+
+        // Floating Chat functionality with LIA agent
+        function toggleFloatingChat() {
+            const chatWindow = document.getElementById('floating-chat-window');
+            chatWindow.classList.toggle('open');
+        }
+
+        async function sendFloatingMessage() {
+            const input = document.getElementById('floating-chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const messages = document.getElementById('floating-chat-messages');
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user';
+            userMessage.innerText = message;
+            messages.appendChild(userMessage);
+            input.value = '';
+
+            try {
+                const response = await fetch('/lia', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.response || 'Failed to get response from LIA');
+                }
+                const aiMessage = document.createElement('div');
+                aiMessage.className = 'message ai';
+                aiMessage.innerText = data.response;
+                messages.appendChild(aiMessage);
+            } catch (error) {
+                const aiMessage = document.createElement('div');
+                aiMessage.className = 'message ai';
+                aiMessage.innerText = 'Error: Unable to get a response from LIA.';
+                messages.appendChild(aiMessage);
+            }
+
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        document.getElementById('floating-chat-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendFloatingMessage();
             }
         });
 
